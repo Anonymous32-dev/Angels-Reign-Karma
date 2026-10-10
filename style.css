@@ -268,3 +268,41 @@ body::-webkit-scrollbar{display:none;}
 
 .tab-bg{opacity:0; transition:opacity .25s ease;}
 .tab-bg.on{opacity:1;}
+
+/* ===== keep panel height driven by the LEFT column; right tabs scroll inside ===== */
+@media (min-width:641px){
+  .col-right{
+    contain:size;               /* right column no longer stretches the panel */
+    display:flex;
+    flex-direction:column;
+    min-height:0;
+  }
+  .col-right .tabs{flex:0 0 auto;}
+  .tab-body{
+    flex:1 1 auto;
+    min-height:0;               /* overrides the 260px so it can shrink */
+    display:flex;
+  }
+  .tab-body-inner{
+    flex:1 1 auto;
+    min-height:0;
+    height:100%;
+    overflow-y:auto;
+    overflow-x:hidden;
+    overscroll-behavior:contain;
+    padding:8px 8px 2px 2px;    /* room for the .tools buttons that sit at -7px */
+    scrollbar-width:thin;
+    scrollbar-color:rgba(232,130,58,0.55) transparent;
+  }
+  .tab-body-inner::-webkit-scrollbar{width:5px;}
+  .tab-body-inner::-webkit-scrollbar-track{background:transparent;}
+  .tab-body-inner::-webkit-scrollbar-thumb{background:rgba(232,130,58,0.55); border-radius:99px;}
+}
+
+/* phones: panel is stacked, so just cap the height */
+@media (max-width:640px){
+  .tab-body-inner{max-height:420px; overflow-y:auto; padding:8px 8px 2px 2px;}
+}
+
+/* the tab body is the only scroller (Activity no longer double-scrolls) */
+.tab-body-inner .media-scroll{max-height:none !important; overflow:visible;}
