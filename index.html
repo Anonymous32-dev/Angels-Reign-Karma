@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>404J1mxError</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<video id="bgVideo" autoplay muted loop playsinline></video>
+<audio id="bgAudio" loop></audio>
+<button class="sound-btn" id="soundBtn" style="display:none;" title="Toggle sound">
+  <svg id="soundIcon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 6a9 9 0 0 1 0 12"/></svg>
+</button>
+<div class="wrap">
+
+  <div class="panel">
+    <div class="col-left">
+      <div class="banner" id="banner"></div>
+      <div class="identity">
+        <div class="avatar" id="avatar">👤</div>
+        <div class="who">
+          <div class="name-row" id="nameRow"></div>
+          <div class="title-row"><span class="pill" id="titleText"></span></div>
+        </div>
+      </div>
+      <div class="uid" id="uidText"></div>
+      <div class="bio" id="bioText"></div>
+      <div class="devices" id="devicesRow"></div>
+      <div class="content-box" id="contentBox">video / content</div>
+      <div class="stats">
+        <button class="stat-btn" id="likeBtn"><svg class="ic-heart" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg><span class="n" id="likeN">—</span></button>
+        <div class="stat-btn" style="cursor:default;"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 12S5 5 12 5s10.5 7 10.5 7-3.5 7-10.5 7S1.5 12 1.5 12z"/><circle cx="12" cy="12" r="3"/></svg><span class="n" id="viewN">—</span></div>
+      </div>
+      <div class="hint" id="statHint">tap the heart to like</div>
+    </div>
+
+    <div class="col-right">
+      <div class="tabs" id="tabs">
+        <button class="tab active" data-tab="activity">Activity</button>
+        <button class="tab" data-tab="playlist">Playlist</button>
+        <button class="tab" data-tab="games">Games</button>
+        <button class="tab" data-tab="socials">Socials</button>
+      </div>
+      <div class="tab-body" id="tabBody"><div class="tab-body-inner" id="tabBodyInner"></div></div>
+    </div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
