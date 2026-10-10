@@ -194,12 +194,20 @@ body::-webkit-scrollbar{display:none;}
   box-shadow:0 8px 18px rgba(0,0,0,0.3);}
 .activity-item.media{flex-direction:column; align-items:stretch; padding:10px;}
 .activity-item.media .media-preview{
-  width:100%; height:160px; border-radius:14px; overflow:hidden; background:rgba(0,0,0,0.3);
+  width:100%; aspect-ratio:4 / 3; border-radius:14px; overflow:hidden; background:rgba(0,0,0,0.3);
 }
 .activity-item.media .media-preview img, .activity-item.media .media-preview video{
   width:100%; height:100%; object-fit:cover; display:block;
 }
 .activity-item.media .media-preview{position:relative;}
+/* right column media: auto-sized per file, 3 visible, scroll for more */
+.media-scroll{position:relative; overflow-y:auto; overflow-x:hidden; padding:2px; overscroll-behavior:contain;
+  scrollbar-width:thin; scrollbar-color:rgba(232,130,58,0.55) transparent;}
+.media-scroll.scrolls{padding-right:7px;}
+.media-scroll::-webkit-scrollbar{width:5px;}
+.media-scroll::-webkit-scrollbar-track{background:transparent;}
+.media-scroll::-webkit-scrollbar-thumb{background:rgba(232,130,58,0.55); border-radius:99px;}
+.media-scroll .activity-item.media .media-preview{max-height:300px;}
 .activity-item.media .del-btn{position:absolute; top:8px; right:8px; margin:0; background:rgba(0,0,0,0.6);}
 .activity-item.media .media-caption{display:flex; align-items:center; gap:8px; padding:8px 4px 2px;}
 .activity-item:last-child{margin-bottom:0;}
@@ -260,21 +268,3 @@ body::-webkit-scrollbar{display:none;}
 
 .tab-bg{opacity:0; transition:opacity .25s ease;}
 .tab-bg.on{opacity:1;}
-
-/* owner login box (Firebase) */
-.login-modal{
-  position:fixed; inset:0; z-index:50; display:flex; align-items:center; justify-content:center;
-  background:rgba(0,0,0,0.6); backdrop-filter:blur(4px); padding:16px;
-}
-.login-box{
-  width:min(320px, 100%); display:flex; flex-direction:column; gap:10px; padding:20px;
-  background:rgba(20,12,6,0.96); border:1px solid var(--accent2); border-radius:20px;
-  box-shadow:0 20px 50px rgba(0,0,0,0.6);
-}
-.login-title{font-weight:600; font-size:15px; margin-bottom:2px;}
-.login-box input{
-  background:rgba(255,255,255,0.06); border:1px solid var(--panel-b); border-radius:12px;
-  color:var(--text); font-family:inherit; font-size:13px; padding:10px 12px; outline:none;
-}
-.login-box input:focus{border-color:var(--accent2);}
-.login-row{display:flex; justify-content:flex-end; gap:8px; margin-top:4px;}
