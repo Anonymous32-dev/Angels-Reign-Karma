@@ -132,10 +132,13 @@ function dedupeSpotify(){
 
 async function savePosts(){
   if(db && isOwner){
-    try{ await db.doc('site/activity').set({ posts: activityPosts }); }catch(e){}
+    try{ await db.doc('site/activity').set({ posts: activityPosts }); return true; }
+    catch(e){ console.error('Could not save posts', e); return false; }
   } else if(!db){
-    try{ localStorage.setItem('helloworld_activity_posts', JSON.stringify(activityPosts)); }catch(e){}
+    try{ localStorage.setItem('helloworld_activity_posts', JSON.stringify(activityPosts)); return true; }
+    catch(e){ console.error('Could not save posts', e); return false; }
   }
+  return true;
 }
 
 // Owner tools (the + buttons and the × remove buttons) are only shown in edit mode.
@@ -316,7 +319,8 @@ function renderPlaylist(){
     <div>${items}</div>`;
 }
 
-// ---- right column: images/videos keep their real shape, max 3 visible, scroll for the rest ----
+// ---- right column: images/videos keep their real shape, max 2 visible, scroll for the rest ----
+const MEDIA_VISIBLE = 2; // how many show before the list scrolls
 function mediaRatio(w, h){
   // use the file's own width/height, but clamp very tall or very wide ones so they can't dominate the card
   return Math.min(2.2, Math.max(0.7, w / h));
@@ -325,13 +329,13 @@ function fitMediaScroll(){
   const box = document.getElementById('mediaScroll');
   if(!box) return;
   const items = box.querySelectorAll('.activity-item');
-  if(items.length <= 3){
+  if(items.length <= MEDIA_VISIBLE){
     box.style.maxHeight = '';
     box.classList.remove('scrolls');
     return;
   }
-  const third = items[2];
-  box.style.maxHeight = (third.offsetTop + third.offsetHeight + 2) + 'px';
+  const last = items[MEDIA_VISIBLE - 1];
+  box.style.maxHeight = (last.offsetTop + last.offsetHeight + 2) + 'px';
   box.classList.add('scrolls');
 }
 function setupMediaScroll(){
@@ -424,7 +428,9 @@ function addActivityPost(icon, label, meta, data, kind, extra){
     activityPosts = activityPosts.filter(p => !(p.label === label && spotifyKey(p) === k));
   }
   activityPosts.unshift(Object.assign({icon, label, meta, data, kind}, extra || {}));
-  savePosts();
+  savePosts().then(ok => {
+    if(!ok) alert('This post shows on your screen but could NOT be saved, so other people (and you after a refresh) will not see it. Photos and videos are usually too big for the page storage - try a smaller file.');
+  });
   renderTab(currentTab);
   if(label === 'Spotify'){
     renderNowPlaying();
