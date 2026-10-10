@@ -12,21 +12,18 @@ const CONFIG = {
   // label shows on hover, color is any hex. Use icon: 'https://...' or a data: URL instead of svg
   // for your own custom image badge.
   badges: [
-    { type:'verified' }
-    // Uncomment / copy any of these, or make your own:
-    // ,{ svg:'shield', label:'Staff', color:'#5865F2' }
-    // ,{ svg:'star', label:'Partner', color:'#5865F2' }
-    // ,{ svg:'headphones', label:'HypeSquad', color:'#9C84EF' }
-    // ,{ svg:'bug', label:'Bug Hunter', color:'#3BA55D' }
-    // ,{ svg:'gem', label:'Early Supporter', color:'#F47FFF' }
-    // ,{ svg:'diamond', label:'Nitro', color:'#FF73FA' }
-    // ,{ svg:'rocket', label:'Server Booster', color:'#F47B67' }
-    // ,{ svg:'wrench', label:'Active Developer', color:'#5865F2' }
-    // ,{ svg:'trophy', label:'Top Fan', color:'#FFC94D' }
-    // ,{ svg:'crown', label:'Owner', color:'#FFD700' }
-    // ,{ svg:'bolt', label:'Fast Responder', color:'#3BA2FF' }
-    // ,{ svg:'heart', label:'Supporter', color:'#FF5C7A' }
-    // ,{ icon:'https://your-image-url.png', label:'Custom Badge' }
+    { type:'verified' },
+    { svg:'crown', label:'Owner', color:'#FFD700' },
+    { svg:'shield', label:'Staff', color:'#5865F2' },
+    { svg:'diamond', label:'Nitro', color:'#FF73FA' },
+    { svg:'fire', label:'On Fire', color:'#FF5500' },
+    { svg:'bolt', label:'Fast Responder', color:'#3BA2FF' },
+    { svg:'trophy', label:'Top Fan', color:'#FFC94D' },
+    { svg:'skull', label:'Og Member', color:'#A6A6A6' },
+    { svg:'rocket', label:'Server Booster', color:'#F47B67' },
+    { svg:'gem', label:'Early Supporter', color:'#F47FFF' }
+    // Want different ones? Just swap the svg/label/color above —
+    // full symbol list is in the comment block further up.
   ],
 
   title: 'Full-Stack Overthinker',
