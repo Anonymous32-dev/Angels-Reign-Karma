@@ -783,9 +783,31 @@ async function initStats(){
 
 // ---- boot: connect to Firebase (firebase-db.js), load the real profile/activity/edit state,
 // then render everything that depends on it ----
+// add ?debug to the address (e.g. .../Angels-Reign-Karma/?debug) to see connection status on the page
+const DBG = [];
+function dbg(m){
+  DBG.push(m); console.log('[debug]', m);
+  const el = document.getElementById('dbgBox');
+  if(el) el.textContent = DBG.join('\n');
+}
+
 async function boot(){
-  const s = await FB.start();            // connects, restores owner login, or signs in anonymously
+  if(/[?&]debug/.test(location.search)){
+    const d = document.createElement('pre');
+    d.id = 'dbgBox';
+    d.style.cssText = 'position:fixed;left:8px;right:8px;bottom:8px;z-index:200;max-height:45vh;overflow:auto;margin:0;padding:10px;font-size:11px;white-space:pre-wrap;word-break:break-all;background:rgba(0,0,0,.92);color:#9f9;border:1px solid #393;border-radius:10px;';
+    document.body.appendChild(d);
+  }
+  dbg('script.js version: firebase-rest v2');
+  let s = { db:null, uid:null, isOwner:false };
+  if(typeof FB === 'undefined'){
+    dbg('ERROR: firebase-db.js did NOT load. Upload it next to index.html and check the <script src="firebase-db.js"> line.');
+  } else {
+    try{ s = await FB.start(); }catch(e){ dbg('ERROR in FB.start: ' + e.message); }
+    FB.log.forEach(m => dbg('WARN: ' + m));
+  }
   db = s.db; uid = s.uid; isOwner = s.isOwner;
+  dbg('database: ' + (db ? 'connected' : 'NOT connected (local-only mode)') + ' | visitor id: ' + (uid ? uid.slice(0,6) + '...' : 'none') + ' | owner: ' + isOwner);
 
   if(location.hash === '#logout'){ FB.logout(); return; }
   if(db && location.hash === '#edit' && !isOwner){ FB.showLogin(); }
@@ -795,11 +817,13 @@ async function boot(){
     try{
       const snap = await db.doc('site/profile').get();
       if(snap.exists) Object.assign(profile, snap.data());
-    }catch(e){ console.error('load profile', e); }
+      dbg('profile in Firebase: ' + (snap.exists ? 'yes' : 'no (using config.js text)'));
+    }catch(e){ console.error('load profile', e); dbg('ERROR loading profile: ' + e.message); }
     try{
       const snap = await db.doc('site/activity').get();
       if(snap.exists && Array.isArray(snap.data().posts)) activityPosts = snap.data().posts;
-    }catch(e){ console.error('load posts', e); }
+      dbg('posts loaded from Firebase: ' + activityPosts.length + (snap.exists && !Array.isArray(snap.data().posts) ? ' (WARNING: posts is not a list)' : ''));
+    }catch(e){ console.error('load posts', e); dbg('ERROR loading posts: ' + e.message); }
   } else {
     EDIT = localEditFallback();
     try{ Object.assign(profile, JSON.parse(localStorage.getItem(PROFILE_KEY)) || {}); }catch(e){}
