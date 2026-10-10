@@ -1,11 +1,38 @@
 /* ===== EDIT YOUR INFO HERE ===== */
 const CONFIG = {
   name: 'Ark J1mx',
-  verified: true,
+  verified: true, // kept for backwards-compat — only used if the 'badges' list below is empty
+
+  // Badges shown next to your name, left to right, Discord-style.
+  // { type:'verified' } = the checkmark badge (uses CONFIG.images.badge below if you set one).
+  // svg: real icon symbols (crisp, same on every device, no emoji) — pick a name from the list below.
+  //   shield · star · diamond · bug · rocket · bolt · crown · headphones · wrench · heart · gem · trophy
+  //   fire · flag · medal · gamepad · moon · sun · skull · ghost · key · lock · eye · paw · leaf
+  //   anchor · gift · camera · music · infinity · target · puzzle
+  // label shows on hover, color is any hex. Use icon: 'https://...' or a data: URL instead of svg
+  // for your own custom image badge.
+  badges: [
+    { type:'verified' }
+    // Uncomment / copy any of these, or make your own:
+    // ,{ svg:'shield', label:'Staff', color:'#5865F2' }
+    // ,{ svg:'star', label:'Partner', color:'#5865F2' }
+    // ,{ svg:'headphones', label:'HypeSquad', color:'#9C84EF' }
+    // ,{ svg:'bug', label:'Bug Hunter', color:'#3BA55D' }
+    // ,{ svg:'gem', label:'Early Supporter', color:'#F47FFF' }
+    // ,{ svg:'diamond', label:'Nitro', color:'#FF73FA' }
+    // ,{ svg:'rocket', label:'Server Booster', color:'#F47B67' }
+    // ,{ svg:'wrench', label:'Active Developer', color:'#5865F2' }
+    // ,{ svg:'trophy', label:'Top Fan', color:'#FFC94D' }
+    // ,{ svg:'crown', label:'Owner', color:'#FFD700' }
+    // ,{ svg:'bolt', label:'Fast Responder', color:'#3BA2FF' }
+    // ,{ svg:'heart', label:'Supporter', color:'#FF5C7A' }
+    // ,{ icon:'https://your-image-url.png', label:'Custom Badge' }
+  ],
+
   title: 'Full-Stack Overthinker',
   username: 'J1mx',
   id: '404Error',
-  bio: "ꜱᴏᴍᴇ ꜱᴏᴜʟꜱ ᴄᴀʀʀʏ ǫᴜɪᴇᴛ ᴏᴄᴇᱟɴꜱ, ᴀɴᴅ ʏᴏᴜ ᴀʀᴇ ᴀʟʟ ᴏꜰ ᴍɪɴᴇ.-ꜱᴏꜰᴛʙᴏʏ ᴜɴᴋɴᴏᴡɴ",
+  bio: "ꜱᴏᴍᴇ ꜱᴏᴜʟꜱ ᴄᴀʀʀʏ ǫᴜɪᴇᴛ ᴏᴄᴇᱟɴꜱ, ᴀɴᴅ ʏᴏᴜ ᴀʀᴇ ᴀʟʟ ᴏꜰ ᴍɪɴᴇ. -ꜱᴏꜰᴛʙᴏʏ ᴜɴᴋɴᴏᴡɴ",
   devices: ['PC', 'Laptop', 'Phone'],
 
   // paste direct image/video URLs below — leave '' to keep the default look
