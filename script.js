@@ -805,6 +805,17 @@ async function boot(){
     try{ Object.assign(profile, JSON.parse(localStorage.getItem(PROFILE_KEY)) || {}); }catch(e){}
     try{ activityPosts = JSON.parse(localStorage.getItem('helloworld_activity_posts')) || []; }catch(e){ activityPosts = []; }
   }
+  // one-time: push posts/profile that only exist in this browser up to Firebase (owner only)
+  if(db && isOwner){
+    try{
+      if(!activityPosts.length){
+        const local = JSON.parse(localStorage.getItem('helloworld_activity_posts')) || [];
+        if(local.length){ activityPosts = local; await savePosts(); console.log('Uploaded', local.length, 'local posts to Firebase'); }
+      }
+      const lp = JSON.parse(localStorage.getItem(PROFILE_KEY));
+      if(lp && !(await db.doc('site/profile').get()).exists){ Object.assign(profile, lp); await saveProfile(); }
+    }catch(e){ console.error('migrate', e); }
+  }
   dedupeSpotify();
 
   renderProfile();
