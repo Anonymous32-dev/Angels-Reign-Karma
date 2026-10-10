@@ -104,8 +104,7 @@ function esc(s){
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
-// ===== shared state (profile + activity posts) now lives in the artifact's db, =====
-// ===== so every device shows the same thing instead of each browser's own copy. =====
+// ===== shared state (profile + activity posts) lives in Firebase Realtime Database via firebase-db.js =====
 let db = null, user = null, uid = null, isOwner = false, DATA_READY = false;
 
 let activityPosts = [];
@@ -141,11 +140,9 @@ async function savePosts(){
   return true;
 }
 
-// Owner tools (the + buttons and the × remove buttons) are only shown in edit mode.
-// With the shared database connected, edit mode simply follows "is this visitor the
-// site owner" - so it turns on for the owner on every device, and never for anyone
-// else. Without a database (e.g. previewing the raw file), #edit / #view still work
-// as a local-only fallback, same as before.
+// Owner tools (the + buttons and the x remove buttons) are only shown in edit mode.
+// With the database connected, edit mode follows "is this visitor the owner" and #view lets
+// the owner preview the visitor view. Without a database, #edit / #view work as a local-only fallback.
 let EDIT = false;
 function localEditFallback(){
   try{
@@ -162,7 +159,8 @@ let profile = { name:CONFIG.name, title:CONFIG.title, username:CONFIG.username, 
 
 async function saveProfile(){
   if(db && isOwner){
-    try{ await db.doc('site/profile').set(profile); }catch(e){}
+    try{ await db.doc('site/profile').set(profile); }
+    catch(e){ console.error('Could not save profile', e); alert('Could not save your changes: ' + e.message); }
   } else if(!db){
     try{ localStorage.setItem(PROFILE_KEY, JSON.stringify(profile)); }catch(e){}
   }
@@ -252,7 +250,7 @@ function renderProfile(){
     const tag = document.createElement('div');
     tag.className = 'edit-tag-fixed';
     tag.textContent = db
-      ? '✎ edit mode — signed in as the owner, changes sync to every device'
+      ? '✎ edit mode — signed in as the owner, changes sync to every device · #view to preview · #logout to sign out'
       : '✎ edit mode — click any dashed text · add #view to the address to leave';
     document.body.appendChild(tag);
   }
@@ -260,7 +258,7 @@ function renderProfile(){
 
 // Playlist tab: all saved Spotify songs / playlists
 
-// Spotify's own compact player (same look as the one at the bottom) - needs no title/cover lookup
+// Spotify's own compact player - needs no title/cover lookup
 function spotifyEmbedUrl(link){
   const u = spotifyUri(link);
   if(!u) return null;
@@ -319,7 +317,7 @@ function renderPlaylist(){
     <div>${items}</div>`;
 }
 
-// ---- right column: images/videos keep their real shape, max 2 visible, scroll for the rest ----
+// ---- right column: images/videos keep their real shape ----
 const MEDIA_VISIBLE = 2; // how many show before the list scrolls
 function mediaRatio(w, h){
   // use the file's own width/height, but clamp very tall or very wide ones so they can't dominate the card
@@ -429,7 +427,7 @@ function addActivityPost(icon, label, meta, data, kind, extra){
   }
   activityPosts.unshift(Object.assign({icon, label, meta, data, kind}, extra || {}));
   savePosts().then(ok => {
-    if(!ok) alert('This post shows on your screen but could NOT be saved, so other people (and you after a refresh) will not see it. Photos and videos are usually too big for the page storage - try a smaller file.');
+    if(!ok) alert('This post shows on your screen but could NOT be saved, so other people (and you after a refresh) will not see it. Check the console (F12) for the reason. Photos and videos can also be too big - try a smaller file.');
   });
   renderTab(currentTab);
   if(label === 'Spotify'){
@@ -522,7 +520,7 @@ window.addEventListener('resize', ()=>{
   floatResizeTimer = setTimeout(renderFloaters, 200);
 });
 
-// ---- background music: embedded Spotify player that loads + plays the latest song you added ----
+// ---- background music helpers ----
 let spApi = null, spController = null, spLoadedUri = null, spWantPlay = false;
 
 function spotifyUri(link){
@@ -582,7 +580,6 @@ function spawnPostToast(icon, label){
 }
 
 // Tab backgrounds are built once and preloaded, then just cross-faded when you switch tabs
-// (no re-loading, so the card background underneath never flashes through)
 const tabBgLayers = {};
 function buildTabBackgrounds(){
   const colRight = document.querySelector('.col-right');
@@ -622,6 +619,7 @@ function renderTab(key){
       btn.addEventListener('click', e=>{
         e.preventDefault();
         e.stopPropagation();
+        if(btn.dataset.del === undefined) return;
         activityPosts.splice(Number(btn.dataset.del), 1);
         savePosts();
         renderTab(currentTab);
@@ -692,24 +690,24 @@ function renderTab(key){
       setupSpotifyButton('addPlaylist', 'playlist');
     }
     if(key === 'activity' && EDIT){
-    const photoFile = document.getElementById('photoFile');
-    const videoFile = document.getElementById('videoFile');
-    document.getElementById('addPhoto').addEventListener('click', ()=> photoFile.click());
-    document.getElementById('addVideo').addEventListener('click', ()=> videoFile.click());
-    photoFile.addEventListener('change', ()=>{
-      const file = photoFile.files[0];
-      if(!file) return;
-      const reader = new FileReader();
-      reader.onload = ()=> addActivityPost('🖼️', 'Photo', file.name, reader.result, 'photo');
-      reader.readAsDataURL(file);
-    });
-    videoFile.addEventListener('change', ()=>{
-      const file = videoFile.files[0];
-      if(!file) return;
-      const reader = new FileReader();
-      reader.onload = ()=> addActivityPost('🎬', 'Video', file.name, reader.result, 'video');
-      reader.readAsDataURL(file);
-    });
+      const photoFile = document.getElementById('photoFile');
+      const videoFile = document.getElementById('videoFile');
+      document.getElementById('addPhoto').addEventListener('click', ()=> photoFile.click());
+      document.getElementById('addVideo').addEventListener('click', ()=> videoFile.click());
+      photoFile.addEventListener('change', ()=>{
+        const file = photoFile.files[0];
+        if(!file) return;
+        const reader = new FileReader();
+        reader.onload = ()=> addActivityPost('🖼️', 'Photo', file.name, reader.result, 'photo');
+        reader.readAsDataURL(file);
+      });
+      videoFile.addEventListener('change', ()=>{
+        const file = videoFile.files[0];
+        if(!file) return;
+        const reader = new FileReader();
+        reader.onload = ()=> addActivityPost('🎬', 'Video', file.name, reader.result, 'video');
+        reader.readAsDataURL(file);
+      });
     }
   }
 }
@@ -722,7 +720,7 @@ document.getElementById('tabs').addEventListener('click', e=>{
   renderTab(btn.dataset.tab);
 });
 
-// ---- likes / views: real shared counts (one per signed-in visitor), same database ----
+// ---- likes / views: real shared counts (one per visitor), same database ----
 const likeBtn = document.getElementById('likeBtn');
 const likeN = document.getElementById('likeN');
 const viewN = document.getElementById('viewN');
@@ -753,7 +751,7 @@ function localStats(){
 
 async function initStats(){
   let likeDoc, viewDoc;
-  if(!uid){ localStats(); return; }
+  if(!db || !uid){ localStats(); return; }
 
   async function refreshCounts(){
     const [likesQ, viewsQ] = await Promise.all([
@@ -770,39 +768,38 @@ async function initStats(){
     liked = (await likeDoc.get()).exists;
     if(!(await viewDoc.get()).exists){ await viewDoc.set({ at: Date.now() }); }
     await refreshCounts();
-  }catch(e){ localStats(); return; }
+  }catch(e){ console.error('stats', e); localStats(); return; }
 
-  statHint.textContent = 'tap the heart to like — one like per signed-in visitor, synced everywhere';
+  statHint.textContent = 'tap the heart to like — one like per visitor, synced everywhere';
   likeBtn.addEventListener('click', async ()=>{
     liked = !liked;
     paintLike(likeN.textContent);
     try{
       if(liked){ await likeDoc.set({ at: Date.now() }); } else { await likeDoc.delete(); }
-    }catch(e){ liked = !liked; }
+    }catch(e){ liked = !liked; console.error('like', e); }
     try{ await refreshCounts(); }catch(e){ paintLike(likeN.textContent); }
   });
 }
 
-// ---- boot: connect to the shared database (if this view has it), load the real
-// profile/activity/edit state, then render everything that depends on it ----
+// ---- boot: connect to Firebase (firebase-db.js), load the real profile/activity/edit state,
+// then render everything that depends on it ----
 async function boot(){
-  try{ db = await claude.use('db'); }catch(e){}
-  try{ user = await claude.use('user'); }catch(e){}
-  if(user){
-    try{ isOwner = user.isOwner(); }catch(e){ isOwner = false; }
-    try{ uid = await user.id(); }catch(e){ uid = null; }
-  }
+  const s = await FB.start();            // connects, restores owner login, or signs in anonymously
+  db = s.db; uid = s.uid; isOwner = s.isOwner;
+
+  if(location.hash === '#logout'){ FB.logout(); return; }
+  if(db && location.hash === '#edit' && !isOwner){ FB.showLogin(); }
 
   if(db){
-    EDIT = isOwner;
+    EDIT = isOwner && location.hash !== '#view';   // #view = preview as a visitor
     try{
       const snap = await db.doc('site/profile').get();
       if(snap.exists) Object.assign(profile, snap.data());
-    }catch(e){}
+    }catch(e){ console.error('load profile', e); }
     try{
       const snap = await db.doc('site/activity').get();
       if(snap.exists && Array.isArray(snap.data().posts)) activityPosts = snap.data().posts;
-    }catch(e){}
+    }catch(e){ console.error('load posts', e); }
   } else {
     EDIT = localEditFallback();
     try{ Object.assign(profile, JSON.parse(localStorage.getItem(PROFILE_KEY)) || {}); }catch(e){}
