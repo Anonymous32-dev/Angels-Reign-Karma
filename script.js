@@ -129,9 +129,14 @@ function dedupeSpotify(){
   if(activityPosts.length !== before) savePosts();
 }
 
+// tiny "last changed" stamp: other devices poll just this number, and only download the real data when it changes
+async function bumpVersion(){
+  try{ await db.doc('site/version').set(Date.now()); }catch(e){ console.error('version', e); }
+}
+
 async function savePosts(){
   if(db && isOwner){
-    try{ await db.doc('site/activity').set({ posts: activityPosts }); return true; }
+    try{ await db.doc('site/activity').set({ posts: activityPosts }); await bumpVersion(); return true; }
     catch(e){ console.error('Could not save posts', e); return false; }
   } else if(!db){
     try{ localStorage.setItem('helloworld_activity_posts', JSON.stringify(activityPosts)); return true; }
@@ -159,7 +164,7 @@ let profile = { name:CONFIG.name, title:CONFIG.title, username:CONFIG.username, 
 
 async function saveProfile(){
   if(db && isOwner){
-    try{ await db.doc('site/profile').set(profile); }
+    try{ await db.doc('site/profile').set(profile); await bumpVersion(); }
     catch(e){ console.error('Could not save profile', e); alert('Could not save your changes: ' + e.message); }
   } else if(!db){
     try{ localStorage.setItem(PROFILE_KEY, JSON.stringify(profile)); }catch(e){}
@@ -770,6 +775,7 @@ async function initStats(){
     await refreshCounts();
   }catch(e){ console.error('stats', e); localStats(); return; }
 
+  window.refreshStats = refreshCounts;   // used by live sync
   statHint.textContent = 'tap the heart to like — one like per visitor, synced everywhere';
   likeBtn.addEventListener('click', async ()=>{
     liked = !liked;
@@ -847,5 +853,44 @@ async function boot(){
   renderTab('activity');
   renderNowPlaying();
   initStats();
+  startLiveSync();
+}
+
+// ---- live sync: every visitor's page updates by itself when the owner changes something ----
+// Polls only the tiny site/version number every 10s; downloads the real data only if it changed.
+async function startLiveSync(){
+  if(!db || EDIT) return;             // the owner in edit mode keeps their own copy (no overwriting while typing)
+  let lastV = null;
+  try{ lastV = (await db.doc('site/version').get()).data(); }catch(e){}
+
+  async function pull(){
+    try{
+      const ps = await db.doc('site/profile').get();
+      if(ps.exists){
+        const np = Object.assign({}, profile, ps.data());
+        if(JSON.stringify(np) !== JSON.stringify(profile)){ profile = np; renderProfile(); }
+      }
+      const as = await db.doc('site/activity').get();
+      const posts = (as.exists && Array.isArray(as.data().posts)) ? as.data().posts : [];
+      if(JSON.stringify(posts) !== JSON.stringify(activityPosts)){
+        activityPosts = posts;
+        renderTab(currentTab);
+        renderNowPlaying();
+      }
+      dbg('live update received');
+    }catch(e){ dbg('live sync error: ' + e.message); }
+  }
+
+  async function tick(){
+    if(document.hidden) return;
+    try{
+      const v = (await db.doc('site/version').get()).data();
+      if(v !== lastV){ lastV = v; await pull(); }
+      if(window.refreshStats) await window.refreshStats();
+    }catch(e){}
+  }
+  setInterval(tick, 10000);
+  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) tick(); });
+  dbg('live sync: on (checks every 10s)');
 }
 boot();
