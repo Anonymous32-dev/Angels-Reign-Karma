@@ -111,13 +111,18 @@ let db = null, user = null, uid = null, isOwner = false, DATA_READY = false;
 let activityPosts = [];
 
 // same Spotify song saved twice -> keep only the newest one
-function spotifyKey(p){ return (p.link || p.meta || '').split('?')[0].trim().toLowerCase(); }
+function isMusicPost(p){ return p.label === 'Spotify' || p.label === 'Apple Music'; }
+function spotifyKey(p){
+  const l = (p.link || p.meta || '').trim().toLowerCase();
+  // Apple Music keeps its ?i= (which song inside an album); Spotify ignores the query string
+  return p.label === 'Apple Music' ? l : l.split('?')[0];
+}
 function dedupeSpotify(){
   const seen = new Set();
   const before = activityPosts.length;
   activityPosts = activityPosts.filter(p=>{
-    if(p.label !== 'Spotify') return true;
-    const k = spotifyKey(p);
+    if(!isMusicPost(p)) return true;
+    const k = p.label + '|' + spotifyKey(p);
     if(seen.has(k)) return false;
     seen.add(k);
     return true;
@@ -264,13 +269,34 @@ function spotifyEmbedHTML(link, h){
   return src ? `<iframe src="${src}" height="${h}" loading="lazy" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" title="Spotify player"></iframe>` : '';
 }
 
+// ---- Apple Music: Apple's own embed player (no title/cover lookup needed) ----
+function isAppleMusicLink(link){ return /^https?:\/\/(geo\.)?music\.apple\.com\//i.test((link || '').trim()); }
+function appleEmbedUrl(link){
+  if(!isAppleMusicLink(link)) return null;
+  try{
+    const u = new URL(link.trim());
+    u.hostname = 'embed.music.apple.com';
+    u.searchParams.set('theme', 'dark');
+    return u.toString();
+  }catch(e){ return null; }
+}
+function appleEmbedHeight(link){
+  // a single song (a /song/ link, or an album link with ?i=) gets the compact 175px player; albums & playlists get the taller one
+  return (/\/song\//.test(link) || /[?&]i=\d+/.test(link)) ? 175 : 450;
+}
+function appleEmbedHTML(link, h){
+  const src = appleEmbedUrl(link);
+  return src ? `<iframe src="${src}" height="${h}" loading="lazy" allow="autoplay *; encrypted-media *; fullscreen *; clipboard-write" sandbox="allow-forms allow-popups allow-same-origin allow-scripts allow-storage-access-by-user-activation allow-top-navigation-by-user-activation" title="Apple Music player"></iframe>` : '';
+}
+
 function renderPlaylist(){
   const delBtn = i => EDIT ? `<button class="del-btn edit-btn" data-edit="${i}" title="Edit title / artist">✎</button><button class="del-btn" data-del="${i}" title="Remove">×</button>` : '';
-  const songs = activityPosts.map((a, i)=>({a, i})).filter(x => x.a.label === 'Spotify');
+  const songs = activityPosts.map((a, i)=>({a, i})).filter(x => isMusicPost(x.a));
   const items = songs.length ? songs.map(({a, i})=>{
     const link = a.link || a.meta;
-    const h = /\/(playlist|album|show)\//.test(link) ? 152 : 80;
-    const embed = spotifyEmbedHTML(link, h);
+    const isApple = a.label === 'Apple Music';
+    const h = isApple ? appleEmbedHeight(link) : (/\/(playlist|album|show)\//.test(link) ? 152 : 80);
+    const embed = isApple ? appleEmbedHTML(link, h) : spotifyEmbedHTML(link, h);
     if(embed){
       const tools = EDIT ? `<div class="tools"><button class="del-btn" data-del="${i}" title="Remove">×</button></div>` : '';
       return `<div class="sp-embed">${tools}${embed}</div>`;
@@ -334,7 +360,7 @@ window.addEventListener('resize', fitMediaScroll);
 function renderActivity(){
   const all = activityPosts.concat(CONFIG.activity);
   const delBtn = i => (EDIT && i < activityPosts.length) ? `<button class="del-btn" data-del="${i}" title="Remove">×</button>` : '';
-  const shown = all.map((a, i)=>({a, i})).filter(x => x.a.label !== 'Spotify');
+  const shown = all.map((a, i)=>({a, i})).filter(x => !isMusicPost(x.a));
   const items = shown.length ? shown.map(({a, i})=>{
     if(a.data && (a.kind === 'photo' || a.kind === 'video')){
       const media = a.kind === 'photo'
@@ -393,9 +419,9 @@ async function fetchSpotifyInfo(link){
 }
 
 function addActivityPost(icon, label, meta, data, kind, extra){
-  if(label === 'Spotify'){
-    const k = spotifyKey({link: (extra && extra.link) || meta});
-    activityPosts = activityPosts.filter(p => !(p.label === 'Spotify' && spotifyKey(p) === k));
+  if(label === 'Spotify' || label === 'Apple Music'){
+    const k = spotifyKey({label, link: (extra && extra.link) || meta});
+    activityPosts = activityPosts.filter(p => !(p.label === label && spotifyKey(p) === k));
   }
   activityPosts.unshift(Object.assign({icon, label, meta, data, kind}, extra || {}));
   savePosts();
@@ -419,7 +445,7 @@ function renderFloaters(){
   if(Math.max(bandL, bandR) < 150) return; // screen too narrow: nothing floats
 
   const items = activityPosts
-    .filter(p => p.label === 'Spotify' || (p.data && (p.kind === 'photo' || p.kind === 'video')))
+    .filter(p => isMusicPost(p) || (p.data && (p.kind === 'photo' || p.kind === 'video')))
     .slice(0, 8);
   let seeded = false;
   const placed = [];
@@ -433,8 +459,8 @@ function renderFloaters(){
       p.fdelay = -Math.random() * 5;
       seeded = true;
     }
-    const isSong = p.label === 'Spotify';
-    const h = isSong ? (/\/(playlist|album|show)\//.test(p.link || p.meta || '') ? 152 : 80) : 110;
+    const isSong = isMusicPost(p);
+    const h = p.label === 'Apple Music' ? 175 : isSong ? (/\/(playlist|album|show)\//.test(p.link || p.meta || '') ? 152 : 80) : 110;
     const bandOf = side => side === 0 ? bandL : bandR;
     const wOf = side => Math.min(isSong ? 300 : 150, bandOf(side) - 24);
     const yMax = Math.max(12, vh - h - 70);
@@ -463,7 +489,7 @@ function renderFloaters(){
       el = document.createElement('div');
       el.className = 'float-song float-embed';
       const lk = p.link || p.meta;
-      el.innerHTML = spotifyEmbedHTML(lk, /\/(playlist|album|show)\//.test(lk) ? 152 : 80) ||
+      el.innerHTML = (p.label === 'Apple Music' ? appleEmbedHTML(lk, 175) : spotifyEmbedHTML(lk, /\/(playlist|album|show)\//.test(lk) ? 152 : 80)) ||
         `<a class="sp-fallback" href="${esc(lk)}" target="_blank" rel="noopener">🎧 ${esc(p.title || lk)}</a>`;
     } else {
       el = document.createElement('div');
@@ -616,8 +642,20 @@ function renderTab(key){
       const btn = document.getElementById(btnId);
       const isPlaylist = type === 'playlist';
       btn.addEventListener('click', async ()=>{
-        const link = prompt(isPlaylist ? 'Paste the Spotify playlist link:' : 'Paste the Spotify song link:');
+        const link = prompt(isPlaylist ? 'Paste the Spotify or Apple Music playlist link:' : 'Paste the Spotify or Apple Music song link:');
         if(!link) return;
+        if(isAppleMusicLink(link)){
+          const appleOk = isPlaylist ? /\/(playlist|album)\//.test(link) : (/\/song\//.test(link) || /[?&]i=\d+/.test(link));
+          if(!appleOk){
+            alert(isPlaylist
+              ? 'That doesn\'t look like an Apple Music playlist or album link. Use the + Song button for single songs.'
+              : 'That doesn\'t look like an Apple Music song link. Use the + Playlist button for playlists and albums.');
+            return;
+          }
+          const cleanLink = link.trim();
+          addActivityPost('🎧', 'Apple Music', cleanLink, null, 'applemusic', {link: cleanLink, spType: type});
+          return;
+        }
         const kindOk = isPlaylist ? /\/(playlist|album)\//.test(link) : /\/track\//.test(link);
         if(!kindOk){
           alert(isPlaylist
