@@ -200,7 +200,7 @@ body::-webkit-scrollbar{display:none;}
   width:100%; height:100%; object-fit:cover; display:block;
 }
 .activity-item.media .media-preview{position:relative;}
-/* right column media: auto-sized per file, 3 visible, scroll for more */
+/* right column media: auto-sized per file, 2 visible, scroll for more */
 .media-scroll{position:relative; overflow-y:auto; overflow-x:hidden; padding:2px; overscroll-behavior:contain;
   scrollbar-width:thin; scrollbar-color:rgba(232,130,58,0.55) transparent;}
 .media-scroll.scrolls{padding-right:7px;}
