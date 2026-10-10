@@ -3,9 +3,9 @@ const CONFIG = {
   name: 'Ark J1mx',
   verified: true,
   title: 'Full-Stack Overthinker',
-  username: 'Error J1mx',
-  id: '404',
-  bio: "Building weird little games and shipping them before I'm ready. Currently deep in a Roblox project.",
+  username: 'J1mx',
+  id: '404Error',
+  bio: "ꜱᴏᴍᴇ ꜱᴏᴜʟꜱ ᴄᴀʀʀʏ ǫᴜɪᴇᴛ ᴏᴄᴇᱟɴꜱ, ᴀɴᴅ ʏᴏᴜ ᴀʀᴇ ᴀʟʟ ᴏꜰ ᴍɪɴᴇ.-ꜱᴏꜰᴛʙᴏʏ ᴜɴᴋɴᴏᴡɴ",
   devices: ['PC', 'Laptop', 'Phone'],
 
   // paste direct image/video URLs below — leave '' to keep the default look
