@@ -29,7 +29,7 @@ const CONFIG = {
   title: 'Full-Stack Overthinker',
   username: 'J1mx',
   id: '404Error',
-  bio: "ꜱᴏᴍᴇ ꜱᴏᴜʟꜱ ᴄᴀʀʀʏ ǫᴜɪᴇᴛ ᴏᴄᴇᱟɴꜱ, ᴀɴᴅ ʏᴏᴜ ᴀʀᴇ ᴀʟʟ ᴏꜰ ᴍɪɴᴇ. -ꜱᴏꜰᴛʙᴏʏ ᴜɴᴋɴᴏᴡɴ",
+  bio: "𝚂𝙾𝙼𝙴 𝚂𝙾𝚄𝙻𝚂 𝙲𝙰𝚁𝚁𝚈 𝚀𝚄𝙸𝙴𝚃 𝙾𝙲𝙴𝙰𝙽𝚂, 𝙰𝙽𝙳 𝚈𝙾𝚄 𝙰𝚁𝙴 𝙰𝙻𝙻 𝙾𝙵 𝙼𝙸𝙽𝙴. -𝚂𝙾𝙵𝚃𝙱𝙾𝚈 𝚄𝙽𝙺𝙽𝙾𝚆𝙽",
   devices: ['PC', 'Laptop', 'Phone'],
 
   // paste direct image/video URLs below — leave '' to keep the default look
