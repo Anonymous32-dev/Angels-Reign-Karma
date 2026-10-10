@@ -160,10 +160,65 @@ async function saveProfile(){
   }
 }
 
-function badgeHTML(){
-  if(!CONFIG.verified) return '';
-  if(CONFIG.images.badge) return `<img class="badge-img" src="${esc(CONFIG.images.badge)}" alt="verified">`;
+// Built-in badge symbols (real SVG icons, not emoji) — pick one by name in CONFIG.badges via svg:'name'
+const BADGE_ICONS = {
+  shield: '<path d="M12 2l7 3v6c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V5l7-3z"/>',
+  star: '<path d="M12 2l2.9 6.3 6.9.6-5.2 4.6 1.6 6.8L12 16.9 5.8 20.3l1.6-6.8L2.2 8.9l6.9-.6z"/>',
+  diamond: '<path d="M12 2l5 6-5 14-5-14z"/>',
+  bug: '<g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 7h6M12 3v4M7 10h10v6a5 5 0 0 1-10 0zM4 11l3 1M20 11l-3 1M4 18l3-1.5M20 18l-3-1.5"/></g>',
+  rocket: '<g fill="currentColor"><path d="M12 2c3 2 4.3 6.3 3.2 10.6l-3.2 3-3.2-3C7.7 8.3 9 4 12 2z"/><circle cx="12" cy="9" r="1.4" fill="#1a1008"/><path d="M8.5 14.5 6 17l1.2 3L10 18M15.5 14.5 18 17l-1.2 3L14 18"/></g>',
+  bolt: '<path d="M13 2 4 14h6l-1 8 9-12h-6z"/>',
+  crown: '<path d="M3 8l4 3 5-6 5 6 4-3-2 10H5z"/>',
+  headphones: '<g fill="currentColor"><path d="M4 13v-1a8 8 0 0 1 16 0v1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><rect x="3" y="13" width="4" height="6" rx="1.5"/><rect x="17" y="13" width="4" height="6" rx="1.5"/></g>',
+  wrench: '<path d="M21 7a4 4 0 0 1-5.3 3.8L9 17.5a2 2 0 1 1-2.8-2.8l6.7-6.7A4 4 0 1 1 21 7z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+  heart: '<path d="M12 20s-7-4.4-9.5-8.7C.8 8 2.3 4.5 5.7 4 8 3.6 10 5 12 7c2-2 4-3.4 6.3-3C21.7 4.5 23.2 8 21.5 11.3 19 15.6 12 20 12 20z"/>',
+  gem: '<path d="M4 8l3-5h10l3 5-8 12z"/>',
+  trophy: '<g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M5 5H3v2a3 3 0 0 0 3 3M19 5h2v2a3 3 0 0 1-3 3M9 20h6M12 14v6"/></g>',
+  fire: '<path d="M12 2c1 3-2 4-2 7a4 4 0 0 0 8 0c0-2-1-3-1-5 2 2 3 5 3 8a6 6 0 0 1-12 0c0-4 2-6 4-10z"/>',
+  flag: '<g fill="currentColor"><rect x="4" y="2" width="1.6" height="20"/><path d="M6 3h13l-3.2 4L19 11H6z"/></g>',
+  medal: '<g fill="currentColor"><path d="M8 2l4 6 4-6h-3L12 5.5 11 2z"/><circle cx="12" cy="15" r="6"/></g>',
+  gamepad: '<g fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M6 8h12a4 4 0 0 1 4 4l-1 5a2 2 0 0 1-3.4 1.4L15 16H9l-2.6 2.4A2 2 0 0 1 3 17l-1-5a4 4 0 0 1 4-4z"/><path d="M8 11v3M6.5 12.5h3"/></g><g fill="currentColor"><circle cx="16" cy="11" r="1"/><circle cx="18" cy="13" r="1"/></g>',
+  moon: '<path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 1 0 10.5 10.5z"/>',
+  sun: '<g fill="currentColor"><circle cx="12" cy="12" r="4"/></g><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v2M12 20v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2 12h2M20 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></g>',
+  skull: '<g fill="currentColor"><path d="M12 2a8 8 0 0 0-8 8c0 3 1.5 5 3 6.5V19a2 2 0 0 0 2 2h1v-2h1v2h2v-2h1v2h1a2 2 0 0 0 2-2v-2.5c1.5-1.5 3-3.5 3-6.5a8 8 0 0 0-8-8z"/></g><g fill="#1a1008"><circle cx="9" cy="10" r="1.6"/><circle cx="15" cy="10" r="1.6"/></g>',
+  ghost: '<g fill="currentColor"><path d="M12 2a7 7 0 0 0-7 7v11l2.5-2 2 2 2.5-2.5 2.5 2.5 2-2 2.5 2V9a7 7 0 0 0-7-7z"/></g><g fill="#1a1008"><circle cx="9.5" cy="10" r="1.2"/><circle cx="14.5" cy="10" r="1.2"/></g>',
+  key: '<g fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M14 3a5 5 0 0 0-4.9 6.1L2 16.2V21h4.8l1-1v-2h2v-2h2l2.1-2.1A5 5 0 1 0 14 3z"/></g><circle cx="16.5" cy="7.5" r="1.3" fill="currentColor"/>',
+  lock: '<g fill="currentColor"><rect x="5" y="11" width="14" height="10" rx="2"/></g><path d="M8 11V7a4 4 0 0 1 8 0v4" fill="none" stroke="currentColor" stroke-width="2"/>',
+  eye: '<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/>',
+  paw: '<g fill="currentColor"><circle cx="7" cy="9" r="2"/><circle cx="12" cy="6.5" r="2"/><circle cx="17" cy="9" r="2"/><path d="M12 12c-4 0-6 3-6 5.5A2.5 2.5 0 0 0 8.5 20c1 0 1.7-.6 3.5-.6s2.5.6 3.5.6a2.5 2.5 0 0 0 2.5-2.5c0-2.5-2-5.5-6-5.5z"/></g>',
+  leaf: '<g fill="currentColor"><path d="M20 3C9 3 3 9 3 18v3h3c9 0 15-6 15-17V3h-1z"/></g><path d="M6 18c4-4 9-9 13-13" fill="none" stroke="#1a1008" stroke-width="1.5"/>',
+  anchor: '<g fill="currentColor"><circle cx="12" cy="4" r="2"/></g><path d="M12 6v14M6 12H2a10 10 0 0 0 9 9M18 12h4a10 10 0 0 1-9 9M6 12h12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+  gift: '<g fill="currentColor"><rect x="3" y="9" width="18" height="12" rx="1.5"/><rect x="3" y="6" width="18" height="4" rx="1"/><path d="M12 6C9 6 8 3.5 9.5 2.3 11 1 12 3 12 6zM12 6c3 0 4-2.5 2.5-3.7C13 1 12 3 12 6z"/></g><path d="M12 6v15" stroke="#1a1008" stroke-width="2"/>',
+  camera: '<g fill="currentColor"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/></g><circle cx="12" cy="13" r="3.5" fill="#1a1008"/>',
+  music: '<path d="M9 18V5l11-2v13" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><g fill="currentColor"><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="16" r="2.5"/></g>',
+  infinity: '<path d="M6.5 8.5a4.5 4.5 0 1 0 0 7c2 0 3-1.5 5.5-4.5s3.5-4.5 5.5-4.5a4.5 4.5 0 1 1 0 9c-2 0-3-1.5-5.5-4.5S9 6.5 6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>',
+  target: '<g fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/></g><circle cx="12" cy="12" r="1.8" fill="currentColor"/>',
+  puzzle: '<path d="M9 3h4v2a2 2 0 1 0 0 4v2h4a2 2 0 1 1 0 4h-2v2a2 2 0 1 1-4 0v-2H9a2 2 0 0 1-2-2v-2H5a2 2 0 1 1 0-4h2V5a2 2 0 0 1 2-2z"/>'
+};
+function svgBadgeHTML(name){
+  const p = BADGE_ICONS[name];
+  if(!p) return '';
+  return `<svg class="badge" viewBox="0 0 24 24" fill="currentColor">${p}</svg>`;
+}
+function verifiedBadgeHTML(){
+  if(CONFIG.images.badge) return `<img class="badge-img" src="${esc(CONFIG.images.badge)}" alt="Verified">`;
   return `<svg class="badge" viewBox="0 0 24 24" role="img" aria-label="Verified"><path fill="currentColor" d="M12 1.6l2.5 1.9 3.1-.2 1.1 2.9 2.8 1.5-.5 3.1L22.4 12l-1.4 2.4.5 3.1-2.8 1.5-1.1 2.9-3.1-.2L12 22.4l-2.5-1.9-3.1.2-1.1-2.9-2.8-1.5.5-3.1L1.6 12 3 9.6l-.5-3.1 2.8-1.5 1.1-2.9 3.1.2z"/><path d="M7.8 12.2l2.9 2.9 5.5-5.7" fill="none" stroke="#1a1008" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+}
+// Discord-style badge strip: any number of badges, each its own hover tooltip (native title attr).
+function badgeHTML(){
+  const list = (CONFIG.badges && CONFIG.badges.length) ? CONFIG.badges : (CONFIG.verified ? [{type:'verified'}] : []);
+  return list.map(b=>{
+    if(b.type === 'verified'){
+      return `<span class="badge-chip" title="Verified">${verifiedBadgeHTML()}</span>`;
+    }
+    if(b.icon){
+      return `<span class="badge-chip" title="${esc(b.label||'')}"><img class="badge-img" src="${esc(b.icon)}" alt="${esc(b.label||'')}"></span>`;
+    }
+    if(b.svg){
+      return `<span class="badge-chip" title="${esc(b.label||'')}" style="color:${esc(b.color||'var(--accent)')}">${svgBadgeHTML(b.svg)}</span>`;
+    }
+    return `<span class="badge-chip" title="${esc(b.label||'')}" style="color:${esc(b.color||'var(--accent)')}">${esc(b.emoji||'🏅')}</span>`;
+  }).join('');
 }
 function renderProfile(){
   const ce = EDIT ? ' contenteditable="true" spellcheck="false"' : '';
