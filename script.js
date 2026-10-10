@@ -195,10 +195,11 @@ const BADGE_ICONS = {
   target: '<g fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/></g><circle cx="12" cy="12" r="1.8" fill="currentColor"/>',
   puzzle: '<path d="M9 3h4v2a2 2 0 1 0 0 4v2h4a2 2 0 1 1 0 4h-2v2a2 2 0 1 1-4 0v-2H9a2 2 0 0 1-2-2v-2H5a2 2 0 1 1 0-4h2V5a2 2 0 0 1 2-2z"/>'
 };
-function svgBadgeHTML(name){
+function svgBadgeHTML(name, color){
   const p = BADGE_ICONS[name];
   if(!p) return '';
-  return `<svg class="badge" viewBox="0 0 24 24" fill="currentColor">${p}</svg>`;
+  const styleAttr = color ? ` style="color:${esc(color)}"` : '';
+  return `<svg class="badge" viewBox="0 0 24 24" fill="currentColor"${styleAttr}>${p}</svg>`;
 }
 function verifiedBadgeHTML(){
   if(CONFIG.images.badge) return `<img class="badge-img" src="${esc(CONFIG.images.badge)}" alt="Verified">`;
@@ -215,14 +216,15 @@ function badgeHTML(){
       return `<span class="badge-chip" title="${esc(b.label||'')}"><img class="badge-img" src="${esc(b.icon)}" alt="${esc(b.label||'')}"></span>`;
     }
     if(b.svg){
-      return `<span class="badge-chip" title="${esc(b.label||'')}" style="color:${esc(b.color||'var(--accent)')}">${svgBadgeHTML(b.svg)}</span>`;
+      return `<span class="badge-chip" title="${esc(b.label||'')}">${svgBadgeHTML(b.svg, b.color)}</span>`;
     }
     return `<span class="badge-chip" title="${esc(b.label||'')}" style="color:${esc(b.color||'var(--accent)')}">${esc(b.emoji||'🏅')}</span>`;
   }).join('');
 }
 function renderProfile(){
   const ce = EDIT ? ' contenteditable="true" spellcheck="false"' : '';
-  document.getElementById('nameRow').innerHTML = `<span class="ed" data-f="name"${ce}></span>${badgeHTML()}`;
+  document.getElementById('nameRow').innerHTML = `<span class="ed" data-f="name"${ce}></span>`;
+  document.getElementById('badgesRow').innerHTML = badgeHTML();
   document.getElementById('titleText').innerHTML = `<span class="ed" data-f="title"${ce}></span>`;
   document.getElementById('uidText').innerHTML = `@<span class="ed" data-f="username"${ce}></span> · id <span class="ed" data-f="id"${ce}></span>`;
   document.getElementById('bioText').innerHTML = `<span class="ed" data-f="bio"${ce}></span>`;
