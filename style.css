@@ -121,6 +121,8 @@ body::-webkit-scrollbar{display:none;}
 .name-row{display:flex; align-items:center; gap:6px; font-size:19px; font-weight:600;}
 .badge{color:var(--accent); width:18px; height:18px; flex-shrink:0;}
 .badge-img{width:18px; height:18px; object-fit:contain; flex-shrink:0;}
+.badges-row{display:flex; flex-wrap:wrap; align-items:center; gap:5px; margin-top:5px;}
+.badge-chip{display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; flex-shrink:0; font-size:13px; line-height:1; cursor:default;}
 .title-row{color:var(--sub); font-size:13px; margin-top:3px; display:flex; align-items:center; gap:8px;}
 .title-row .pill{border:1px solid var(--panel-b); border-radius:999px; padding:2px 9px;}
 .uid{color:var(--sub); font-size:12px; margin-top:6px;}
