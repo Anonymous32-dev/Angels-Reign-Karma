@@ -12,6 +12,7 @@
   const KEY = C.apiKey || '';
   const LS = 'fb_auth_v1';
   let auth = null; // { idToken, refreshToken, expiresAt, uid, email }
+  const LOG = [];  // problems are collected here so the page can show them with ?debug
 
   function loadAuth(){ try{ auth = JSON.parse(localStorage.getItem(LS)); }catch(e){ auth = null; } }
   function saveAuth(){ try{ localStorage.setItem(LS, JSON.stringify(auth)); }catch(e){} }
@@ -104,14 +105,18 @@
   // Connects, restores a saved login, or signs in anonymously (needed for likes/views).
   async function start(){
     if(!BASE || !KEY){
-      console.warn('[firebase-db] databaseURL or apiKey missing in firebase-config.js - using local-only mode');
+      LOG.push('databaseURL or apiKey is EMPTY in firebase-config.js (databaseURL="' + BASE + '", apiKey ' + (KEY ? 'set' : 'missing') + ') -> local-only mode');
+      console.warn('[firebase-db]', LOG[LOG.length - 1]);
       return { db: null, uid: null, isOwner: false };
     }
     loadAuth();
     if(auth) await token();
     if(!auth){
       try{ applyAuth(await authPost('accounts:signUp', { returnSecureToken: true })); }
-      catch(e){ console.warn('[firebase-db] anonymous sign-in failed (enable Anonymous in Authentication > Sign-in method):', e.message); }
+      catch(e){
+        LOG.push('Anonymous sign-in FAILED: ' + e.message + ' (enable Anonymous in Authentication > Sign-in method, or check the API key restrictions)');
+        console.warn('[firebase-db]', LOG[LOG.length - 1]);
+      }
     }
     return { db, uid: auth ? auth.uid : null, isOwner: isOwnerNow() };
   }
@@ -159,5 +164,5 @@
 
   function logout(){ clearAuth(); location.hash = '#view'; location.reload(); }
 
-  window.FB = { start, showLogin, logout };
+  window.FB = { start, showLogin, logout, log: LOG };
 })();
