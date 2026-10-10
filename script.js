@@ -104,6 +104,185 @@ function esc(s){
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
+// ===== Firebase Realtime Database (plain REST, no SDK) =====
+// Settings are in firebase-config.js. When filled in, posts / profile / likes / views are saved online
+// for every visitor. Without it the page falls back to the old behaviour (this browser only).
+const FBCFG = window.FIREBASE_CONFIG || {};
+const FB_URL = String(FBCFG.databaseURL || '').trim().replace(/\/+$/, '');
+const FB_ON = /^https:\/\/\S+$/.test(FB_URL);
+const FB_KEY = String(FBCFG.apiKey || '').trim();
+const FB_EMAIL = String(FBCFG.ownerEmail || '').trim();
+const MAX_SHARED_VIDEO = 3 * 1048576; // keeps the shared database small
+
+function newId(prefix){ return (prefix || 'v') + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+
+// stable pseudo-random number (0..1) from text: every visitor sees the same floating layout
+function hash01(str, salt){
+  let h = (2166136261 ^ salt) >>> 0;
+  for(let i = 0; i < str.length; i++){ h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+  h ^= h >>> 13; h = Math.imul(h, 1274126177); h ^= h >>> 16;
+  return (h >>> 0) / 4294967296;
+}
+
+let fbLastAlert = 0;
+function fbAlert(msg){
+  if(Date.now() - fbLastAlert < 4000) return;
+  fbLastAlert = Date.now();
+  alert(msg);
+}
+function fbMessage(e){
+  const m = String((e && e.message) || e);
+  if(/Not signed in/.test(m)) return 'You need to log in as the owner to save changes. Open the page with #edit at the end of the address.';
+  if(/401|403/.test(m)) return 'The database refused the change (permission denied). Check your Firebase rules, the apiKey and the owner login.';
+  return 'Could not reach the database: ' + m;
+}
+
+function askLogin(defEmail){
+  return new Promise(resolve=>{
+    const wrap = document.createElement('div');
+    wrap.className = 'login-modal';
+    wrap.innerHTML =
+      `<form class="login-box">
+        <div class="login-title">Owner login</div>
+        <input type="email" name="email" placeholder="Email" autocomplete="username" value="${esc(defEmail || '')}" required>
+        <input type="password" name="password" placeholder="Password" autocomplete="current-password" required>
+        <div class="login-row">
+          <button type="button" class="add-btn" data-cancel>Cancel</button>
+          <button type="submit" class="add-btn">Log in</button>
+        </div>
+      </form>`;
+    const finish = v => { wrap.remove(); resolve(v); };
+    wrap.querySelector('form').addEventListener('submit', e=>{
+      e.preventDefault();
+      const f = e.target;
+      finish({ email: f.email.value.trim(), password: f.password.value });
+    });
+    wrap.querySelector('[data-cancel]').addEventListener('click', ()=> finish(null));
+    document.body.appendChild(wrap);
+    const first = wrap.querySelector(defEmail ? 'input[type=password]' : 'input');
+    if(first) first.focus();
+  });
+}
+
+// owner sign-in (Firebase Authentication, email + password); the login is remembered in this browser
+let fbToken = null, fbTokenExp = 0;
+async function fbIdToken(interactive){
+  if(!FB_KEY) return null;
+  if(fbToken && Date.now() < fbTokenExp - 60000) return fbToken;
+  let saved = null;
+  try{ saved = JSON.parse(localStorage.getItem('helloworld_fb_auth')); }catch(e){}
+  if(saved && saved.refreshToken){
+    try{
+      const r = await fetch('https://securetoken.googleapis.com/v1/token?key=' + encodeURIComponent(FB_KEY), {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'grant_type=refresh_token&refresh_token=' + encodeURIComponent(saved.refreshToken)
+      });
+      if(r.ok){
+        const j = await r.json();
+        fbToken = j.id_token; fbTokenExp = Date.now() + Number(j.expires_in) * 1000;
+        try{ localStorage.setItem('helloworld_fb_auth', JSON.stringify({refreshToken: j.refresh_token || saved.refreshToken})); }catch(e){}
+        return fbToken;
+      }
+    }catch(e){}
+  }
+  if(!interactive) return null;
+  const cred = await askLogin(FB_EMAIL);
+  if(!cred) return null;
+  const r = await fetch('https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=' + encodeURIComponent(FB_KEY), {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({email: cred.email, password: cred.password, returnSecureToken: true})
+  });
+  const j = await r.json();
+  if(!r.ok){ alert('Login failed: ' + ((j.error && j.error.message) || r.status)); return null; }
+  fbToken = j.idToken; fbTokenExp = Date.now() + Number(j.expiresIn) * 1000;
+  try{ localStorage.setItem('helloworld_fb_auth', JSON.stringify({refreshToken: j.refreshToken})); }catch(e){}
+  return fbToken;
+}
+
+async function fbRaw(method, path, opt){
+  opt = opt || {};
+  const params = [];
+  if(opt.query) params.push(opt.query);
+  if(opt.auth){
+    const t = await fbIdToken(true);
+    if(FB_KEY && !t) throw new Error('Not signed in');
+    if(t) params.push('auth=' + encodeURIComponent(t));
+  }
+  const r = await fetch(FB_URL + '/' + path + '.json' + (params.length ? '?' + params.join('&') : ''), {
+    method,
+    body: opt.body === undefined ? undefined : JSON.stringify(opt.body)
+  });
+  if(!r.ok) throw new Error('Database ' + r.status);
+  return r.json();
+}
+
+// Looks like the small db the rest of this script was written for: db.doc('a/b').get()/set()/delete()
+// and db.collection('likes').get().size. Writes to site/* (profile + posts) need the owner login.
+async function createFirebaseBackend(){
+  let owner = false;
+  if(location.hash === '#view'){
+    try{ localStorage.removeItem('helloworld_fb_auth'); localStorage.removeItem('helloworld_edit'); }catch(e){}
+  } else if(FB_KEY){
+    let tok = await fbIdToken(false);                                   // login remembered from an earlier visit
+    if(!tok && location.hash === '#edit') tok = await fbIdToken(true);  // otherwise show the login box
+    owner = !!tok;
+  } else {
+    owner = localEditFallback();                                        // no apiKey: rules must allow public writes
+  }
+  let vid = null;
+  try{ vid = localStorage.getItem('helloworld_vid'); if(!vid){ vid = newId('v'); localStorage.setItem('helloworld_vid', vid); } }
+  catch(e){ vid = newId('v'); }
+
+  const needsOwner = path => /^site(\/|$)/.test(path);
+  const dbApi = {
+    doc(path){
+      return {
+        async get(){ const v = await fbRaw('GET', path); return { exists: v != null, data: ()=> v }; },
+        async set(obj){
+          try{ await fbRaw('PUT', path, {body: obj, auth: needsOwner(path)}); }
+          catch(e){ fbAlert(fbMessage(e)); throw e; }
+        },
+        async delete(){
+          try{ await fbRaw('DELETE', path, {auth: needsOwner(path)}); }
+          catch(e){ fbAlert(fbMessage(e)); throw e; }
+        }
+      };
+    },
+    collection(name){
+      return { async get(){ const v = await fbRaw('GET', name, {query: 'shallow=true'}); return { size: v ? Object.keys(v).length : 0 }; } };
+    }
+  };
+  return { db: dbApi, user: { isOwner: ()=> owner, id: async ()=> vid } };
+}
+
+// photos are shrunk before saving (keeps the database and page loads small)
+function shrinkImage(file, maxSide, quality){
+  maxSide = maxSide || 800; quality = quality || 0.72;
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = ()=>{
+      const original = reader.result;
+      const img = new Image();
+      img.onerror = ()=> (original.length < 900000 ? resolve(original) : reject(new Error('bad image')));
+      img.onload = ()=>{
+        try{
+          const s = Math.min(1, maxSide / Math.max(img.width, img.height));
+          const c = document.createElement('canvas');
+          c.width = Math.max(1, Math.round(img.width * s));
+          c.height = Math.max(1, Math.round(img.height * s));
+          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+          resolve(c.toDataURL('image/jpeg', quality));
+        }catch(e){ resolve(original); }
+      };
+      img.src = original;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 // ===== shared state (profile + activity posts) now lives in the artifact's db, =====
 // ===== so every device shows the same thing instead of each browser's own copy. =====
 let db = null, user = null, uid = null, isOwner = false, DATA_READY = false;
@@ -127,6 +306,8 @@ function dedupeSpotify(){
 
 async function savePosts(){
   if(db && isOwner){
+    // never save before the existing data was loaded successfully (it would wipe what is already online)
+    if(!DATA_READY){ fbAlert('Saving is paused because your saved data could not be loaded. Refresh the page and try again.'); return; }
     try{ await db.doc('site/activity').set({ posts: activityPosts }); }catch(e){}
   } else if(!db){
     try{ localStorage.setItem('helloworld_activity_posts', JSON.stringify(activityPosts)); }catch(e){}
@@ -154,6 +335,7 @@ let profile = { name:CONFIG.name, title:CONFIG.title, username:CONFIG.username, 
 
 async function saveProfile(){
   if(db && isOwner){
+    if(!DATA_READY){ fbAlert('Saving is paused because your saved data could not be loaded. Refresh the page and try again.'); return; }
     try{ await db.doc('site/profile').set(profile); }catch(e){}
   } else if(!db){
     try{ localStorage.setItem(PROFILE_KEY, JSON.stringify(profile)); }catch(e){}
@@ -356,7 +538,7 @@ function addActivityPost(icon, label, meta, data, kind, extra){
     const k = spotifyKey({link: (extra && extra.link) || meta});
     activityPosts = activityPosts.filter(p => !(p.label === 'Spotify' && spotifyKey(p) === k));
   }
-  activityPosts.unshift(Object.assign({icon, label, meta, data, kind}, extra || {}));
+  activityPosts.unshift(Object.assign({icon, label, meta, data, kind, ts: Date.now()}, extra || {}));
   savePosts();
   renderTab(currentTab);
   if(label === 'Spotify'){
@@ -385,12 +567,13 @@ function renderFloaters(){
 
   items.forEach(p=>{
     if(p.fx == null){
-      p.fx = Math.random(); p.fy = Math.random();
-      p.fside = Math.random() < 0.5 ? 0 : 1;
-      p.frot = Math.random() * 6 - 3;
-      p.fdur = 4 + Math.random() * 3;
-      p.fdelay = -Math.random() * 5;
-      seeded = true;
+      // derived from the post itself, so every visitor sees the same layout (nothing extra to save)
+      const key = String(p.link || p.meta || '') + '|' + (p.kind || '') + '|' + (p.ts || '');
+      p.fx = hash01(key, 1); p.fy = hash01(key, 2);
+      p.fside = hash01(key, 3) < 0.5 ? 0 : 1;
+      p.frot = hash01(key, 4) * 6 - 3;
+      p.fdur = 4 + hash01(key, 5) * 3;
+      p.fdelay = -hash01(key, 6) * 5;
     }
     const isSong = p.label === 'Spotify';
     const h = isSong ? (/\/(playlist|album|show)\//.test(p.link || p.meta || '') ? 152 : 80) : 110;
@@ -613,13 +796,18 @@ function renderTab(key){
     photoFile.addEventListener('change', ()=>{
       const file = photoFile.files[0];
       if(!file) return;
-      const reader = new FileReader();
-      reader.onload = ()=> addActivityPost('🖼️', 'Photo', file.name, reader.result, 'photo');
-      reader.readAsDataURL(file);
+      shrinkImage(file).then(url => addActivityPost('🖼️', 'Photo', file.name, url, 'photo'))
+        .catch(()=> alert('Could not read that picture.'));
+      photoFile.value = '';
     });
     videoFile.addEventListener('change', ()=>{
       const file = videoFile.files[0];
       if(!file) return;
+      if(FB_ON && file.size > MAX_SHARED_VIDEO){
+        alert('That video is ' + (file.size / 1048576).toFixed(1) + ' MB. For the shared database keep videos under ' + (MAX_SHARED_VIDEO / 1048576) + ' MB (a short, small clip).');
+        videoFile.value = '';
+        return;
+      }
       const reader = new FileReader();
       reader.onload = ()=> addActivityPost('🎬', 'Video', file.name, reader.result, 'video');
       reader.readAsDataURL(file);
@@ -700,8 +888,13 @@ async function initStats(){
 // ---- boot: connect to the shared database (if this view has it), load the real
 // profile/activity/edit state, then render everything that depends on it ----
 async function boot(){
-  try{ db = await claude.use('db'); }catch(e){}
-  try{ user = await claude.use('user'); }catch(e){}
+  if(FB_ON){
+    try{ const fb = await createFirebaseBackend(); db = fb.db; user = fb.user; }
+    catch(e){ console.warn('Firebase setup failed:', e); }
+  } else {
+    try{ db = await claude.use('db'); }catch(e){}
+    try{ user = await claude.use('user'); }catch(e){}
+  }
   if(user){
     try{ isOwner = user.isOwner(); }catch(e){ isOwner = false; }
     try{ uid = await user.id(); }catch(e){ uid = null; }
@@ -709,14 +902,20 @@ async function boot(){
 
   if(db){
     EDIT = isOwner;
+    let okProfile = false, okActivity = false;
     try{
       const snap = await db.doc('site/profile').get();
+      okProfile = true;
       if(snap.exists) Object.assign(profile, snap.data());
-    }catch(e){}
+    }catch(e){ console.warn('Could not load the profile:', e); }
     try{
       const snap = await db.doc('site/activity').get();
-      if(snap.exists && Array.isArray(snap.data().posts)) activityPosts = snap.data().posts;
-    }catch(e){}
+      okActivity = true;
+      const raw = snap.exists && snap.data() ? snap.data().posts : null;
+      if(Array.isArray(raw)) activityPosts = raw;
+      else if(raw && typeof raw === 'object') activityPosts = Object.keys(raw).sort((a, b)=> a - b).map(k => raw[k]); // database turned the list into numbered keys
+    }catch(e){ console.warn('Could not load the posts:', e); }
+    DATA_READY = okProfile && okActivity;
   } else {
     EDIT = localEditFallback();
     try{ Object.assign(profile, JSON.parse(localStorage.getItem(PROFILE_KEY)) || {}); }catch(e){}
