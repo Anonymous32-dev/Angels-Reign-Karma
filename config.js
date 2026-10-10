@@ -15,12 +15,8 @@ const CONFIG = {
     { type:'verified' },
     { svg:'crown', label:'Owner', color:'#FFD700' },
     { svg:'shield', label:'Staff', color:'#5865F2' },
-    { svg:'diamond', label:'Nitro', color:'#FF73FA' },
     { svg:'fire', label:'On Fire', color:'#FF5500' },
-    { svg:'bolt', label:'Fast Responder', color:'#3BA2FF' },
     { svg:'trophy', label:'Top Fan', color:'#FFC94D' },
-    { svg:'skull', label:'Og Member', color:'#A6A6A6' },
-    { svg:'rocket', label:'Server Booster', color:'#F47B67' },
     { svg:'gem', label:'Early Supporter', color:'#F47FFF' }
     // Want different ones? Just swap the svg/label/color above —
     // full symbol list is in the comment block further up.
